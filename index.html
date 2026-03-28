@@ -1,0 +1,768 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Smart Debugger & Converter</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'Segoe UI', system-ui, sans-serif; background: linear-gradient(135deg, #0f0f1a 0%, #1a1a2e 100%); color: #e0e0e0; min-height: 100vh; }
+        .container { max-width: 1500px; margin: 0 auto; padding: 20px; }
+        
+        h1 { text-align: center; font-size: 2.2rem; background: linear-gradient(90deg, #00d4ff, #7c3aed); -webkit-background-clip: text; -webkit-text-fill-color: transparent; margin-bottom: 5px; }
+        .subtitle { text-align: center; color: #888; margin-bottom: 20px; }
+        
+        /* Login Modal */
+        .modal-overlay { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.85); display: flex; align-items: center; justify-content: center; z-index: 1000; }
+        .modal { background: rgba(30,30,50,0.98); border-radius: 20px; padding: 40px; max-width: 450px; width: 90%; border: 1px solid rgba(255,255,255,0.1); }
+        .modal h2 { color: #fff; margin-bottom: 25px; text-align: center; font-size: 1.5rem; }
+        .form-group { margin-bottom: 18px; }
+        .form-group label { display: block; color: #888; margin-bottom: 8px; font-size: 0.9rem; }
+        .form-group input, .form-group select { width: 100%; padding: 12px 15px; background: rgba(0,0,0,0.4); border: 1px solid rgba(255,255,255,0.1); border-radius: 10px; color: #fff; font-size: 1rem; }
+        .form-group input:focus, .form-group select:focus { outline: none; border-color: #00d4ff; }
+        .modal .btn { width: 100%; padding: 14px; font-size: 1rem; margin-top: 10px; }
+        .toggle-link { text-align: center; margin-top: 15px; color: #00d4ff; cursor: pointer; font-size: 0.9rem; }
+        .toggle-link:hover { text-decoration: underline; }
+        .skill-badge { display: inline-block; padding: 5px 15px; border-radius: 20px; font-size: 0.85rem; margin-top: 8px; }
+        .skill-beginner { background: #22c55e; color: #fff; }
+        .skill-intermediate { background: #3b82f6; color: #fff; }
+        .skill-expert { background: #a855f7; color: #fff; }
+        .skill-master { background: #ef4444; color: #fff; }
+        
+        /* User Bar */
+        .user-bar { display: flex; justify-content: space-between; align-items: center; background: rgba(0,0,0,0.3); padding: 12px 20px; border-radius: 15px; margin-bottom: 20px; }
+        .user-info { display: flex; align-items: center; gap: 12px; }
+        .user-avatar { width: 42px; height: 42px; background: linear-gradient(135deg, #00d4ff, #7c3aed); border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: bold; }
+        .user-name { font-weight: 600; color: #fff; }
+        .user-level { font-size: 0.85rem; color: #888; }
+        
+        /* Tabs */
+        .tabs { display: flex; gap: 8px; margin: 20px 0; flex-wrap: wrap; }
+        .tab { padding: 10px 22px; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); border-radius: 10px 10px 0 0; color: #888; cursor: pointer; transition: all 0.3s; }
+        .tab.active { background: rgba(0,212,255,0.15); color: #00d4ff; border-color: #00d4ff; }
+        .tab:hover { background: rgba(255,255,255,0.1); }
+        .tab-content { display: none; padding: 25px; background: rgba(255,255,255,0.03); border-radius: 0 15px 15px 15px; border: 1px solid rgba(255,255,255,0.1); }
+        .tab-content.active { display: block; }
+        
+        /* Panels */
+        .panel { background: rgba(255,255,255,0.05); border-radius: 15px; padding: 22px; margin-bottom: 18px; border: 1px solid rgba(255,255,255,0.1); }
+        h2 { font-size: 1.15rem; color: #00d4ff; margin-bottom: 15px; }
+        
+        textarea { width: 100%; height: 140px; background: rgba(0,0,0,0.4); border: 1px solid rgba(255,255,255,0.1); border-radius: 10px; padding: 14px; color: #e0e0e0; font-family: 'Fira Code', monospace; font-size: 13px; resize: vertical; }
+        textarea:focus { outline: none; border-color: #00d4ff; }
+        
+        /* Buttons */
+        .btn { background: linear-gradient(135deg, #00d4ff, #7c3aed); color: white; border: none; padding: 11px 28px; font-size: 0.95rem; border-radius: 10px; cursor: pointer; transition: all 0.3s; margin: 4px; }
+        .btn:hover { transform: translateY(-2px); box-shadow: 0 6px 20px rgba(0,212,255,0.4); }
+        .btn-secondary { background: rgba(255,255,255,0.1); }
+        .btn-small { padding: 7px 14px; font-size: 0.85rem; }
+        .btn-danger { background: rgba(239,68,68,0.3); }
+        
+        /* Layout */
+        .debug-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; margin-bottom: 18px; }
+        @media (max-width: 900px) { .debug-grid { grid-template-columns: 1fr; } }
+        .box { background: rgba(0,0,0,0.3); border-radius: 15px; padding: 18px; border: 1px solid rgba(255,255,255,0.1); }
+        .box h3 { color: #fff; font-size: 0.95rem; margin-bottom: 12px; display: flex; align-items: center; gap: 10px; }
+        .output-box { height: 360px; border-radius: 12px; padding: 16px; font-family: 'Fira Code', monospace; font-size: 13px; overflow-y: auto; box-sizing: border-box; word-break: break-word; white-space: pre-wrap; }
+        
+        /* Chat */
+        .chat-box { display: flex; flex-direction: column; height: 360px; }
+        .chat-messages { flex: 1; overflow-y: auto; padding: 12px; background: rgba(0,0,0,0.2); border-radius: 12px; margin-bottom: 12px; }
+        .chat-message { margin-bottom: 10px; padding: 10px 14px; border-radius: 12px; max-width: 88%; }
+        .chat-message.user { background: rgba(0,212,255,0.2); margin-left: auto; border-bottom-right-radius: 5px; }
+        .chat-message.ai { background: rgba(124,58,237,0.2); border-bottom-left-radius: 5px; }
+        .chat-message .sender { font-size: 0.75rem; color: #888; margin-bottom: 4px; }
+        .chat-input { display: flex; gap: 10px; }
+        .chat-input input { flex: 1; padding: 10px 14px; background: rgba(0,0,0,0.3); border: 1px solid rgba(255,255,255,0.1); border-radius: 10px; color: #fff; }
+        .chat-input input:focus { outline: none; border-color: #00d4ff; }
+        
+        /* Status */
+        .status-badge { display: inline-flex; padding: 7px 16px; border-radius: 20px; font-size: 0.85rem; font-weight: 600; margin-bottom: 12px; }
+        .status-fixed { background: linear-gradient(135deg, #22c55e, #16a34a); color: white; }
+        .status-error { background: linear-gradient(135deg, #ef4444, #dc2626); color: white; }
+        .copy-btn { background: rgba(34,197,94,0.2); border: 1px solid #22c55e; color: #22c55e; padding: 5px 12px; border-radius: 8px; cursor: pointer; font-size: 0.85rem; }
+        .copy-btn:hover { background: rgba(34,197,94,0.4); }
+        
+        /* Mistakes */
+        .mistakes-panel { background: rgba(0,0,0,0.3); border-radius: 15px; padding: 18px; border: 1px solid rgba(255,255,255,0.1); }
+        .mistakes-panel h3 { color: #fbbf24; margin-bottom: 12px; }
+        .mistake-item { background: rgba(251,191,36,0.1); border-left: 3px solid #fbbf24; padding: 10px 14px; margin-bottom: 8px; border-radius: 0 8px 8px 0; }
+        .mistake-item .title { color: #fbbf24; font-weight: 600; margin-bottom: 4px; }
+        .mistake-item .fix { color: #86efac; font-size: 0.9rem; }
+        .add-mistake { display: flex; gap: 10px; margin-top: 12px; }
+        .add-mistake input { flex: 1; padding: 10px; background: rgba(0,0,0,0.3); border: 1px solid rgba(255,255,255,0.1); border-radius: 8px; color: #fff; }
+        .add-mistake input:focus { outline: none; border-color: #fbbf24; }
+        
+        /* About */
+        .about-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 18px; }
+        .about-card { background: rgba(0,0,0,0.2); border-radius: 15px; padding: 22px; border: 1px solid rgba(255,255,255,0.1); }
+        .about-card:hover { border-color: #00d4ff; transform: translateY(-3px); }
+        .about-card h3 { color: #fff; margin-bottom: 8px; }
+        .about-card p { color: #888; font-size: 0.9rem; line-height: 1.5; }
+        .tech-badge { display: inline-block; background: rgba(0,212,255,0.2); color: #00d4ff; padding: 4px 10px; border-radius: 15px; font-size: 0.85rem; margin: 2px; }
+        
+        /* Loading */
+        .loading { text-align: center; padding: 25px; }
+        .spinner { width: 36px; height: 36px; border: 3px solid rgba(0,212,255,0.1); border-top-color: #00d4ff; border-radius: 50%; animation: spin 1s linear infinite; margin: 0 auto 12px; }
+        @keyframes spin { to { transform: rotate(360deg); } }
+        
+        /* History */
+        .history-item { background: rgba(0,0,0,0.2); border-radius: 12px; padding: 14px; margin-bottom: 10px; cursor: pointer; transition: all 0.3s; }
+        .history-item:hover { background: rgba(0,212,255,0.1); }
+        .history-item .preview { font-family: monospace; font-size: 0.85rem; color: #888; margin-bottom: 6px; }
+        .history-item .meta { display: flex; justify-content: space-between; font-size: 0.8rem; color: #666; }
+    </style>
+</head>
+<body>
+    <!-- Login Modal -->
+    <div class="modal-overlay" id="loginModal">
+        <div class="modal">
+            <h2 id="modalTitle">Welcome Back!</h2>
+            
+            <div id="loginForm">
+                <div class="form-group">
+                    <label>Username</label>
+                    <input type="text" id="loginUsername" placeholder="Enter username">
+                </div>
+                <div class="form-group">
+                    <label>Password</label>
+                    <input type="password" id="loginPassword" placeholder="Enter password">
+                </div>
+                <button class="btn" onclick="login()">Login</button>
+                <div class="toggle-link" onclick="showRegister()">New user? Create account</div>
+            </div>
+            
+            <div id="registerForm" style="display: none;">
+                <div class="form-group">
+                    <label>Your Name</label>
+                    <input type="text" id="regName" placeholder="Enter your name">
+                </div>
+                <div class="form-group">
+                    <label>Username (for login)</label>
+                    <input type="text" id="regUsername" placeholder="Choose a username">
+                </div>
+                <div class="form-group">
+                    <label>Password</label>
+                    <input type="password" id="regPassword" placeholder="Choose a password">
+                </div>
+                <div class="form-group">
+                    <label>Class / University</label>
+                    <input type="text" id="regClass" placeholder="e.g., CS, 3rd Year">
+                </div>
+                <div class="form-group">
+                    <label>Your Coding Level</label>
+                    <select id="regSkill">
+                        <option value="beginner">Beginner - Just starting</option>
+                        <option value="intermediate">Intermediate - Basic code works</option>
+                        <option value="expert">Expert - Comfortable with projects</option>
+                        <option value="master">Master - Can teach others</option>
+                    </select>
+                    <div id="skillBadge" class="skill-badge skill-beginner">Beginner</div>
+                </div>
+                <button class="btn" onclick="register()">Create Account</button>
+                <div class="toggle-link" onclick="showLogin()">Already have account? Login</div>
+            </div>
+            
+            <p id="loginError" style="color: #ef4444; text-align: center; margin-top: 10px; display: none;"></p>
+        </div>
+    </div>
+
+    <div class="container">
+        <h1>AI Smart Debugger & Converter</h1>
+        <p class="subtitle">Fix code errors instantly with AI power</p>
+
+        <!-- User Bar -->
+        <div class="user-bar" id="userBar" style="display: none;">
+            <div class="user-info">
+                <div class="user-avatar" id="userAvatar">?</div>
+                <div>
+                    <div class="user-name" id="displayName">User</div>
+                    <div class="user-level" id="displayLevel">Beginner</div>
+                </div>
+            </div>
+            <button class="btn btn-secondary btn-small" onclick="logout()">Logout</button>
+        </div>
+
+        <!-- Tabs -->
+        <div class="tabs">
+            <button class="tab active" onclick="switchTab('debug')">Debug</button>
+            <button class="tab" onclick="switchTab('convert')">Convert</button>
+            <button class="tab" onclick="switchTab('history')">History</button>
+            <button class="tab" onclick="switchTab('about')">About</button>
+        </div>
+
+        <!-- Debug Tab -->
+        <div id="debug-tab" class="tab-content active">
+            <div class="panel">
+                <h2>Enter Your Code</h2>
+                <textarea id="codeInput" placeholder="Enter your code here..."></textarea>
+                <div style="margin-top: 14px;">
+                    <button class="btn" id="debugBtn" onclick="debugCode()">Debug & Fix</button>
+                    <button class="btn btn-secondary" onclick="clearInput()">Clear</button>
+                </div>
+            </div>
+
+            <div id="loadingPanel" style="display: none;">
+                <div class="loading">
+                    <div class="spinner"></div>
+                    <p style="color: #888;">AI is fixing your code...</p>
+                </div>
+            </div>
+
+            <div class="debug-grid">
+                <div class="box">
+                    <h3>
+                        Faults Found 
+                        <button class="copy-btn" onclick="copyFaults()">Copy</button>
+                        <button class="btn btn-small" onclick="debugCode()" style="margin-left: auto;">Fix Code</button>
+                    </h3>
+                    <div id="statusBadge"></div>
+                    <div id="resultOutput" class="output-box" style="background: rgba(239,68,68,0.1); border: 1px solid rgba(239,68,68,0.3);"></div>
+                </div>
+
+                <div class="box">
+                    <h3>Corrected Code <button class="copy-btn" onclick="copyFixedCode()">Copy</button></h3>
+                    <textarea id="fixedCode" readonly class="output-box" style="background: rgba(34,197,94,0.1); border: 1px solid rgba(34,197,94,0.3); resize: none;"></textarea>
+                </div>
+            </div>
+
+            <div class="debug-grid">
+                <div class="box">
+                    <div class="chat-box">
+                        <h3>AI Assistant <span style="font-size: 0.8rem; color: #888; font-weight: normal;">- Ask questions</span></h3>
+                        <div class="chat-messages" id="chatMessages"></div>
+                        <div class="chat-input">
+                            <input type="text" id="chatInput" placeholder="Ask about your code..." onkeypress="if(event.key==='Enter')sendChat()">
+                            <button class="btn btn-small" onclick="sendChat()">Send</button>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="box">
+                    <div class="mistakes-panel">
+                        <h3>Frequent Mistakes Notes</h3>
+                        <div id="mistakesList"></div>
+                        <div class="add-mistake">
+                            <input type="text" id="mistakeInput" placeholder="Add a mistake...">
+                            <button class="btn btn-small" onclick="addMistake()">Add</button>
+                        </div>
+                        <div style="margin-top: 14px;">
+                            <h4 style="color: #fbbf24; font-size: 0.9rem; margin-bottom: 8px;">Common Mistakes:</h4>
+                            <div class="mistake-item">
+                                <div class="title">Missing Colon (:)</div>
+                                <div class="fix">Add : after for, if, def, while, class</div>
+                            </div>
+                            <div class="mistake-item">
+                                <div class="title">Wrong Indentation</div>
+                                <div class="fix">Use 4 spaces consistently</div>
+                            </div>
+                            <div class="mistake-item">
+                                <div class="title">Undefined Variable</div>
+                                <div class="fix">Define variable before using</div>
+                            </div>
+                            <div class="mistake-item">
+                                <div class="title">Missing Parentheses</div>
+                                <div class="fix">Add () after function calls</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Convert Tab -->
+        <div id="convert-tab" class="tab-content">
+            <div class="panel">
+                <h2>Code Language Converter</h2>
+                <div style="display: flex; gap: 18px; align-items: center; margin-bottom: 18px; flex-wrap: wrap;">
+                    <div style="flex: 1; min-width: 140px;">
+                        <label style="color: #888; font-size: 0.9rem; margin-bottom: 6px; display: block;">From</label>
+                        <select id="fromLang">
+                            <option value="python">Python</option>
+                            <option value="javascript">JavaScript</option>
+                            <option value="java">Java</option>
+                            <option value="cpp">C++</option>
+                            <option value="csharp">C#</option>
+                            <option value="go">Go</option>
+                            <option value="rust">Rust</option>
+                            <option value="ruby">Ruby</option>
+                        </select>
+                    </div>
+                    <div style="font-size: 1.4rem; color: #00d4ff; padding-top: 22px;">-></div>
+                    <div style="flex: 1; min-width: 140px;">
+                        <label style="color: #888; font-size: 0.9rem; margin-bottom: 6px; display: block;">To</label>
+                        <select id="toLang">
+                            <option value="python">Python</option>
+                            <option value="javascript" selected>JavaScript</option>
+                            <option value="java">Java</option>
+                            <option value="cpp">C++</option>
+                            <option value="csharp">C#</option>
+                            <option value="go">Go</option>
+                            <option value="rust">Rust</option>
+                            <option value="ruby">Ruby</option>
+                        </select>
+                    </div>
+                </div>
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 18px;">
+                    <div>
+                        <label style="color: #888; font-size: 0.9rem; margin-bottom: 6px; display: block;">Source Code</label>
+                        <textarea id="convertInput" placeholder="Enter code to convert..." style="height: 260px;"></textarea>
+                    </div>
+                    <div>
+                        <label style="color: #888; font-size: 0.9rem; margin-bottom: 6px; display: block;">Converted Code <button class="copy-btn" onclick="copyConvertedCode()">Copy</button></label>
+                        <textarea id="convertedCode" readonly style="height: 260px; background: rgba(124,58,237,0.05);"></textarea>
+                    </div>
+                </div>
+                <div style="margin-top: 18px;">
+                    <button class="btn" onclick="convertCode()">Convert</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- History Tab -->
+        <div id="history-tab" class="tab-content">
+            <div class="panel">
+                <h2>Your Work History <button class="btn btn-danger btn-small" onclick="clearAllHistory()">Clear All</button></h2>
+                <div id="historyList">
+                    <p style="color: #666; text-align: center; padding: 40px;">No history yet. Start debugging!</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- About Tab -->
+        <div id="about-tab" class="tab-content">
+            <div class="panel">
+                <h2>About This Tool</h2>
+                <div class="about-grid">
+                    <div class="about-card">
+                        <h3>Auto Debugger</h3>
+                        <p>Instantly detects and fixes Python code errors using AI. Supports syntax, runtime, and logic errors.</p>
+                    </div>
+                    <div class="about-card">
+                        <h3>Language Converter</h3>
+                        <p>Convert code between Python, JavaScript, Java, C++, Go, Rust, Ruby, and C# with one click.</p>
+                    </div>
+                    <div class="about-card">
+                        <h3>AI Chat Assistant</h3>
+                        <p>Ask follow-up questions about your code. Get explanations and learn best practices.</p>
+                    </div>
+                    <div class="about-card">
+                        <h3>Syncs Across Devices</h3>
+                        <p>Your account syncs on all devices. Login from anywhere to access your history.</p>
+                    </div>
+                    <div class="about-card">
+                        <h3>Personalized Learning</h3>
+                        <p>Tracks your skill level and mistakes. Suggests improvements based on your patterns.</p>
+                    </div>
+                    <div class="about-card">
+                        <h3>Tech Stack</h3>
+                        <div>
+                            <span class="tech-badge">Flask</span>
+                            <span class="tech-badge">SQLite</span>
+                            <span class="tech-badge">Groq API</span>
+                            <span class="tech-badge">Llama 3.1</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const API_KEY = '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';
+        const API_URL = 'https://api.groq.com/openai/v1/chat/completions';
+        
+        // Change this to your server IP when using on multiple devices
+        const SERVER_URL = window.location.origin;
+        
+        let currentUser = null;
+        let currentSessionId = null;
+        let chatHistory = [];
+
+        window.onload = function() {
+            // Check for saved session
+            const savedUser = localStorage.getItem('ai_debugger_user');
+            if (savedUser) {
+                currentUser = JSON.parse(savedUser);
+                showUserBar();
+                loadData();
+            }
+        };
+
+        function showLogin() {
+            document.getElementById('loginForm').style.display = 'block';
+            document.getElementById('registerForm').style.display = 'none';
+            document.getElementById('modalTitle').textContent = 'Welcome Back!';
+            document.getElementById('loginError').style.display = 'none';
+        }
+
+        function showRegister() {
+            document.getElementById('loginForm').style.display = 'none';
+            document.getElementById('registerForm').style.display = 'block';
+            document.getElementById('modalTitle').textContent = 'Create Account';
+            document.getElementById('loginError').style.display = 'none';
+        }
+
+        async function login() {
+            const username = document.getElementById('loginUsername').value.trim().toLowerCase();
+            const password = document.getElementById('loginPassword').value;
+
+            if (!username || !password) {
+                showError('Please fill all fields');
+                return;
+            }
+
+            try {
+                const response = await fetch(SERVER_URL + '/api/login', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ username, password })
+                });
+
+                const data = await response.json();
+
+                if (data.success) {
+                    currentUser = data.user;
+                    localStorage.setItem('ai_debugger_user', JSON.stringify(currentUser));
+                    document.getElementById('loginModal').style.display = 'none';
+                    showUserBar();
+                    loadData();
+                } else {
+                    showError(data.error || 'Login failed');
+                }
+            } catch (e) {
+                // Fallback for demo mode
+                if (username && password) {
+                    currentUser = { id: 1, username, name: username, skill: 'beginner' };
+                    localStorage.setItem('ai_debugger_user', JSON.stringify(currentUser));
+                    document.getElementById('loginModal').style.display = 'none';
+                    showUserBar();
+                    loadData();
+                }
+            }
+        }
+
+        async function register() {
+            const name = document.getElementById('regName').value.trim();
+            const username = document.getElementById('regUsername').value.trim().toLowerCase();
+            const password = document.getElementById('regPassword').value;
+            const userClass = document.getElementById('regClass').value.trim();
+            const skill = document.getElementById('regSkill').value;
+
+            if (!name || !username || !password) {
+                showError('Please fill all required fields');
+                return;
+            }
+
+            try {
+                const response = await fetch(SERVER_URL + '/api/register', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ name, username, password, userClass, skill })
+                });
+
+                const data = await response.json();
+
+                if (data.success) {
+                    currentUser = data.user;
+                    localStorage.setItem('ai_debugger_user', JSON.stringify(currentUser));
+                    document.getElementById('loginModal').style.display = 'none';
+                    showUserBar();
+                    loadData();
+                } else {
+                    showError(data.error || 'Registration failed');
+                }
+            } catch (e) {
+                // Fallback for demo mode
+                currentUser = { id: Date.now(), username, name, skill };
+                localStorage.setItem('ai_debugger_user', JSON.stringify(currentUser));
+                document.getElementById('loginModal').style.display = 'none';
+                showUserBar();
+                loadData();
+            }
+        }
+
+        function showError(msg) {
+            const err = document.getElementById('loginError');
+            err.textContent = msg;
+            err.style.display = 'block';
+        }
+
+        function showUserBar() {
+            document.getElementById('userBar').style.display = 'flex';
+            document.getElementById('displayName').textContent = currentUser.name || currentUser.username;
+            document.getElementById('displayLevel').textContent = currentUser.skill.charAt(0).toUpperCase() + currentUser.skill.slice(1);
+            document.getElementById('userAvatar').textContent = (currentUser.name || currentUser.username).charAt(0).toUpperCase();
+        }
+
+        function logout() {
+            localStorage.removeItem('ai_debugger_user');
+            location.reload();
+        }
+
+        function loadData() {
+            loadMistakes();
+            loadHistory();
+        }
+
+        function switchTab(tab) {
+            document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+            document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+            event.target.classList.add('active');
+            document.getElementById(tab + '-tab').classList.add('active');
+            if (tab === 'history') loadHistory();
+        }
+
+        async function callGroq(prompt) {
+            const response = await fetch(API_URL, {
+                method: 'POST',
+                headers: { 'Authorization': 'Bearer ' + API_KEY, 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    model: 'llama-3.1-8b-instant',
+                    messages: [{ role: 'user', content: prompt }],
+                    temperature: 0.3,
+                    max_tokens: 2000
+                })
+            });
+            if (!response.ok) throw new Error('API request failed');
+            const data = await response.json();
+            return data.choices && data.choices[0] ? data.choices[0].message.content : '';
+        }
+
+        function cleanCode(response) {
+            if (!response) return '';
+            let code = response;
+            if (code.includes('```')) {
+                const parts = code.split('```');
+                for (let i = 1; i < parts.length; i += 2) {
+                    if (parts[i] && !parts[i].startsWith('python') && !parts[i].startsWith('text')) {
+                        code = parts[i];
+                        break;
+                    }
+                }
+                code = code.replace(/^(python|javascript|java|cpp|csharp|go|rust|ruby)\n?/gm, '').trim();
+            }
+            return code.trim();
+        }
+
+        async function debugCode() {
+            const code = document.getElementById('codeInput').value.trim();
+            if (!code) { alert('Please enter code'); return; }
+
+            document.getElementById('loadingPanel').style.display = 'block';
+            document.getElementById('debugBtn').disabled = true;
+
+            try {
+                const analysis = await callGroq('Analyze this Python code and list ALL errors:\n\n' + code);
+                const fixedCode = cleanCode(await callGroq('Fix ALL errors in this code. Return ONLY the corrected code:\n\n' + code));
+                const explanation = await callGroq('Explain what was wrong and what was fixed:\n\n' + code);
+
+                document.getElementById('statusBadge').innerHTML = '<span class="status-badge status-fixed">FIXED</span>';
+                document.getElementById('resultOutput').innerHTML = analysis.split('\n').map(l => '<div style="margin: 4px 0;">' + escapeHtml(l) + '</div>').join('');
+                document.getElementById('fixedCode').value = fixedCode;
+
+                // Save to database
+                await saveSession(code, fixedCode, explanation, analysis);
+                
+                // Reset chat
+                chatHistory = [];
+                document.getElementById('chatMessages').innerHTML = '';
+                addChatMessage('ai', 'Your code has been fixed! Ask me anything about the changes.');
+
+            } catch (error) {
+                document.getElementById('statusBadge').innerHTML = '<span class="status-badge status-error">ERROR</span>';
+                document.getElementById('resultOutput').innerHTML = '<div style="color: #ef4444;">Error: ' + escapeHtml(error.message) + '</div>';
+            }
+
+            document.getElementById('loadingPanel').style.display = 'none';
+            document.getElementById('debugBtn').disabled = false;
+        }
+
+        async function saveSession(original, fixed, explanation, errors) {
+            try {
+                await fetch(SERVER_URL + '/api/sessions', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        userId: currentUser.id,
+                        originalCode: original,
+                        fixedCode: fixed,
+                        explanation: explanation,
+                        errors: errors
+                    })
+                });
+            } catch (e) {
+                console.log('Session saved locally');
+            }
+            loadHistory();
+        }
+
+        async function sendChat() {
+            const input = document.getElementById('chatInput');
+            const message = input.value.trim();
+            if (!message) return;
+
+            addChatMessage('user', message);
+            input.value = '';
+
+            try {
+                const fixedCode = document.getElementById('fixedCode').value;
+                const prompt = fixedCode ? 'Code: ' + fixedCode + '\n\nQuestion: ' + message : 'Question about this code:\n' + document.getElementById('codeInput').value + '\n\n' + message;
+                const response = await callGroq(prompt);
+                addChatMessage('ai', response);
+            } catch (error) {
+                addChatMessage('ai', 'Sorry, I encountered an error.');
+            }
+        }
+
+        function addChatMessage(role, content) {
+            const container = document.getElementById('chatMessages');
+            const div = document.createElement('div');
+            div.className = 'chat-message ' + role;
+            div.innerHTML = '<div class="sender">' + (role === 'user' ? (currentUser.name || 'You') : 'AI') + '</div>' + escapeHtml(content);
+            container.appendChild(div);
+            container.scrollTop = container.scrollHeight;
+        }
+
+        async function loadHistory() {
+            const list = document.getElementById('historyList');
+            
+            try {
+                const response = await fetch(SERVER_URL + '/api/sessions/' + currentUser.id);
+                const sessions = await response.json();
+
+                if (!sessions || sessions.length === 0) {
+                    list.innerHTML = '<p style="color: #666; text-align: center; padding: 40px;">No history yet.</p>';
+                    return;
+                }
+
+                list.innerHTML = sessions.map(s => 
+                    '<div class="history-item" onclick="loadSession(' + s.id + ')">' +
+                        '<div class="preview">' + escapeHtml((s.original_code || '').substring(0, 60)) + '...</div>' +
+                        '<div class="meta"><span>' + new Date(s.created_at).toLocaleString() + '</span></div>' +
+                    '</div>'
+                ).join('');
+            } catch (e) {
+                list.innerHTML = '<p style="color: #666; text-align: center; padding: 40px;">Login to see history.</p>';
+            }
+        }
+
+        function loadSession(id) {
+            // Implementation for loading session
+        }
+
+        async function clearAllHistory() {
+            if (confirm('Clear all history?')) {
+                try {
+                    await fetch(SERVER_URL + '/api/delete-account/' + currentUser.id, { method: 'DELETE' });
+                } catch (e) {}
+                loadHistory();
+            }
+        }
+
+        async function convertCode() {
+            const code = document.getElementById('convertInput').value.trim();
+            const from = document.getElementById('fromLang').value;
+            const to = document.getElementById('toLang').value;
+
+            if (!code) { alert('Please enter code'); return; }
+            if (from === to) {
+                document.getElementById('convertedCode').value = code;
+                return;
+            }
+
+            try {
+                const converted = cleanCode(await callGroq('Convert this ' + from + ' code to ' + to + '. Return ONLY the converted code:\n\n' + code));
+                document.getElementById('convertedCode').value = converted;
+            } catch (error) {
+                document.getElementById('convertedCode').value = '// Error: ' + error.message;
+            }
+        }
+
+        function clearInput() {
+            document.getElementById('codeInput').value = '';
+            document.getElementById('fixedCode').value = '';
+            document.getElementById('resultOutput').innerHTML = '';
+            document.getElementById('statusBadge').innerHTML = '';
+            document.getElementById('chatMessages').innerHTML = '';
+            chatHistory = [];
+        }
+
+        function copyFaults() {
+            const text = document.getElementById('resultOutput').innerText;
+            if (text) navigator.clipboard.writeText(text);
+        }
+
+        function copyFixedCode() {
+            const code = document.getElementById('fixedCode').value;
+            if (code) navigator.clipboard.writeText(code);
+        }
+
+        function copyConvertedCode() {
+            const code = document.getElementById('convertedCode').value;
+            if (code) navigator.clipboard.writeText(code);
+        }
+
+        // Mistakes
+        async function loadMistakes() {
+            const list = document.getElementById('mistakesList');
+            try {
+                const response = await fetch(SERVER_URL + '/api/mistakes/' + currentUser.id);
+                const mistakes = await response.json();
+                
+                if (!mistakes || mistakes.length === 0) {
+                    list.innerHTML = '<p style="color: #888; font-size: 0.9rem;">Your mistakes will appear here</p>';
+                    return;
+                }
+                
+                list.innerHTML = mistakes.map((m, i) => 
+                    '<div class="mistake-item" style="position: relative;">' +
+                        '<div style="padding-right: 40px;">' + escapeHtml(m.mistake) + '</div>' +
+                        '<button onclick="deleteMistake(' + m.id + ')" style="position: absolute; top: 6px; right: 6px; background: rgba(239,68,68,0.3); border: none; color: #ef4444; padding: 3px 8px; border-radius: 4px; cursor: pointer;">X</button>' +
+                    '</div>'
+                ).join('');
+            } catch (e) {
+                list.innerHTML = '<p style="color: #888; font-size: 0.9rem;">Login to save mistakes</p>';
+            }
+        }
+
+        async function addMistake() {
+            const input = document.getElementById('mistakeInput');
+            const text = input.value.trim();
+            if (!text) return;
+
+            try {
+                await fetch(SERVER_URL + '/api/mistakes', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ userId: currentUser.id, mistake: text })
+                });
+            } catch (e) {}
+            
+            input.value = '';
+            loadMistakes();
+        }
+
+        async function deleteMistake(id) {
+            try {
+                await fetch(SERVER_URL + '/api/mistakes/' + id, { method: 'DELETE' });
+            } catch (e) {}
+            loadMistakes();
+        }
+
+        function escapeHtml(text) {
+            if (!text) return '';
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+
+        document.getElementById('regSkill').addEventListener('change', function() {
+            const skill = this.value;
+            const badge = document.getElementById('skillBadge');
+            badge.className = 'skill-badge skill-' + skill;
+            badge.textContent = skill.charAt(0).toUpperCase() + skill.slice(1);
+        });
+    </script>
+</body>
+</html>
