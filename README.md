@@ -164,7 +164,7 @@ MIT License - feel free to use for educational purposes.
 
 ## Author
 
-**Your Name Here**
+KLSR
 
 ## Acknowledgments
 
